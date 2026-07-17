@@ -201,7 +201,7 @@
       <div class="stat"><div class="k">Block</div><div class="v blkv" id="blkNum">0</div></div>
       <div class="stat"><div class="k">Aether</div><div class="v env" id="enNum">3</div></div>
     </div>
-    <div id="compass"><div class="lbl">THE RING</div><canvas id="radar" width="132" height="132"></canvas></div>
+    <div id="compass"><div class="lbl">GUARD</div><canvas id="radar" width="132" height="132"></canvas></div>
     <div id="rotHint"></div>
     <div id="pileInfo"></div>
     <div id="endturn"><span>End Turn</span><small>enemies act</small></div>
@@ -473,11 +473,13 @@ function addMarker(r){
     const l=new THREE.PointLight(col,1.1,6,2); l.position.set(p.x,1.2,p.z); scene.add(l); contentLights.push(l); }
 }
 
-// ============================================================= RING (combat)
+// ============================================================= FRONT FAN (combat)
+// enemies stand in a visible arc in front of you; "facing" = the lane you aim/guard.
 const ringGroup=new THREE.Group(); scene.add(ringGroup); ringGroup.visible=false;
-const R=2.55, SLOTS=8;
-function slotAngle(s){ return s*(Math.PI*2/SLOTS); }
+const R=3.0, SLOTS=5, LANE_SPREAD=0.36, CENTER_LANE=(SLOTS-1)/2;
+function slotAngle(s){ return (s-CENTER_LANE)*LANE_SPREAD; }
 function slotPos(s){ const a=slotAngle(s); return {x:Math.sin(a)*R, z:-Math.cos(a)*R}; }
+function faceCamYaw(lx,lz){ return Math.atan2(camera.position.x-(ringGroup.position.x+lx), camera.position.z-(ringGroup.position.z+lz)); }
 const slotMarkers=[], guardMarkers=[];
 for(let s=0;s<SLOTS;s++){
   const m=new THREE.Mesh(new THREE.RingGeometry(0.42,0.6,24),new THREE.MeshBasicMaterial({color:0x3a2f22,transparent:true,opacity:.5,side:THREE.DoubleSide}));
@@ -684,7 +686,7 @@ const MAXFLOORS=3;
 const S={
   screen:'title', depth:1, seedBase:12345,
   gx:2, gz:2, dir:0, explored:new Set(),
-  player:{hp:60,maxHp:60,block:0,energy:0,maxEnergy:3,facing:0},
+  player:{hp:60,maxHp:60,block:0,energy:0,maxEnergy:3,facing:CENTER_LANE},
   enemies:[], deck:[], hand:[], discard:[],
   freePivotLeft:1, freeRotateCard:false, firstCardThisTurn:true,
   phase:'idle', relics:[], rewardPool:[], pendingExit:false, turnCount:0,
@@ -802,7 +804,7 @@ const hud=document.getElementById('hud'), handEl=document.getElementById('hand')
 function combatYaw(f){ return -slotAngle(f); }
 function scaleHp(base){ return Math.round(base*(1+0.22*(S.depth-1))); }
 function scaleDmg(base){ return Math.max(1,Math.round(base*(1+0.13*(S.depth-1))*DIFF[settings.difficulty].dmgMult)); }
-function assignSlots(n){ const start=(Math.random()*8)|0; const step=Math.max(1,Math.round(8/n)); const out=[]; let s=start; while(out.length<n){ if(!out.includes(s%8)) out.push(s%8); s+=step; if(out.length<n && out.length>=8) break; } return out; }
+function assignSlots(n){ const spreads={1:[2],2:[1,3],3:[0,2,4],4:[0,1,3,4],5:[0,1,2,3,4]}; return (spreads[n]||[2]).slice(0,n); }
 function rollFoes(){
   if(rooms.find(r=>r.content==='boss'&&r.done)){ } // no-op guard
   const pool = S.depth<=1?['ghoul','ghoul','shade','archer'] : S.depth===2?['ghoul','archer','shade','wight'] : ['wight','archer','shade','ghoul'];
@@ -828,10 +830,13 @@ function startCombat(room, opts){
   document.getElementById('mapWrap').classList.add('hidden');
   const p={x:S.gx*CELL, z:S.gz*CELL};
   ringGroup.position.set(p.x,0,p.z); ringGroup.visible=true;
-  combatLight.position.set(p.x,3.4,p.z); combatLight.intensity=4.4;
-  camera.position.set(p.x,1.5,p.z); S.player.facing=0; camTarget.yaw=combatYaw(0); camera.rotation.set(0,camTarget.yaw,0); camLerp=1;
+  combatLight.position.set(p.x,3.4,p.z-1.4); combatLight.intensity=4.4;
+  // fixed front-facing combat camera: stand back and look at the fan of enemies
+  S.player.facing=CENTER_LANE;
+  camera.position.set(p.x,1.9,p.z+2.6); camera.rotation.set(-0.18,0,0);
+  camTarget.x=p.x; camTarget.z=p.z+2.6; camTarget.yaw=0; camTarget.bumpT=0; camLerp=1;
   clearEnemies();
-  const foes = opts.foes || (room.content==='boss' ? [{kind:'boss',slot:0},{kind:'ghoul',slot:4}] : rollFoes());
+  const foes = opts.foes || (room.content==='boss' ? [{kind:'boss',slot:2},{kind:'ghoul',slot:0}] : rollFoes());
   for(const f of foes){ const e=addEnemy(f.kind, f.slot); if(f.hp){ e.hp=f.hp; e.maxHp=f.hp; } if(f.dmg!=null){ e.dmg=f.dmg; e.baseDmg=f.dmg; } }
   positionEnemies();
   S.deck=shuffle([...(opts.deck||RUN_DECK)]); S.hand=[]; S.discard=[];
@@ -841,7 +846,7 @@ function startCombat(room, opts){
   setTimeout(startPlayerTurn,900);
 }
 function clearEnemies(){ for(const e of S.enemies){ if(e.mesh) ringGroup.remove(e.mesh); if(e.labelEl) e.labelEl.remove(); } S.enemies=[]; document.querySelectorAll('.elabel').forEach(n=>n.remove()); }
-function positionEnemies(){ for(const e of S.enemies){ if(!e.alive) continue; const p=slotPos(e.slot); e.mesh.position.set(p.x,0,p.z); const pl=e.mesh.userData.plane; if(pl) pl.rotation.y=Math.atan2(-p.x,-p.z); } }
+function positionEnemies(){ for(const e of S.enemies){ if(!e.alive) continue; const p=slotPos(e.slot); e.mesh.position.set(p.x,0,p.z); const pl=e.mesh.userData.plane; if(pl) pl.rotation.y=faceCamYaw(p.x,p.z); } }
 
 function startPlayerTurn(){
   S.phase='player'; S.turnCount++;
@@ -868,9 +873,9 @@ function runEnemyTurn(){
   step();
 }
 function enemyAct(e, done){
-  if(S.tutorial && !e._tutFlanked){ // scripted flank to your back to teach the lesson
-    e._tutFlanked=true; e.tc=(e.tc||0)+1; e.slot=(S.player.facing+4)%8; animateSlot(e);
-    setTimeout(()=>{ applyDamageToPlayer(e.dmg, relation(e.slot), e); e.mesh.scale.set(1.2,1.2,1.2); setTimeout(()=>e.mesh&&e.mesh.scale.set(1,1,1),140); updateHUD(); toast('It slips past your guard!',900); done(); },360);
+  if(S.tutorial && !e._tutFlanked){ // scripted slide to the exposed far edge to teach the lesson
+    e._tutFlanked=true; e.tc=(e.tc||0)+1; e.slot = S.player.facing<=CENTER_LANE ? SLOTS-1 : 0; animateSlot(e);
+    setTimeout(()=>{ applyDamageToPlayer(e.dmg, relation(e.slot), e); e.mesh.scale.set(1.2,1.2,1.2); setTimeout(()=>e.mesh&&e.mesh.scale.set(1,1,1),140); updateHUD(); toast('It slips out of your guard!',900); done(); },360);
     return;
   }
   e.tc=(e.tc||0)+1;
@@ -885,7 +890,7 @@ function enemyAct(e, done){
   if(e.staggered) e.staggered=false;
   setTimeout(()=>{
     // boss: summon on every 3rd turn if room
-    if(e.boss && e.tc%3===0){ const occ=new Set(S.enemies.filter(x=>x.alive).map(x=>x.slot)); const free=[...Array(8).keys()].filter(s=>!occ.has(s)); if(free.length && S.enemies.filter(x=>x.alive).length<5){ const ns=free[(Math.random()*free.length)|0]; addEnemy('ghoul',ns); const ne=S.enemies[S.enemies.length-1]; const p=slotPos(ns); ne.mesh.position.set(p.x,0,p.z); ne.mesh.lookAt(0,0,0); toast('The Bellringer calls the dead',800); rollEnemyIntents(); } }
+    if(e.boss && e.tc%3===0){ const occ=new Set(S.enemies.filter(x=>x.alive).map(x=>x.slot)); const free=[...Array(SLOTS).keys()].filter(s=>!occ.has(s)); if(free.length && S.enemies.filter(x=>x.alive).length<SLOTS){ const ns=free[(Math.random()*free.length)|0]; addEnemy('ghoul',ns); const ne=S.enemies[S.enemies.length-1]; const p=slotPos(ns); ne.mesh.position.set(p.x,0,p.z); if(ne.mesh.userData.plane) ne.mesh.userData.plane.rotation.y=faceCamYaw(p.x,p.z); toast('The Bellringer calls the dead',800); rollEnemyIntents(); } }
     const rel=relation(e.slot);
     let dmg=e.dmg; let crit=false;
     if(rel==='back' && !hasRelic('backplate')){ dmg=Math.round(dmg*1.75); crit=true; }
@@ -895,21 +900,18 @@ function enemyAct(e, done){
     done();
   }, e.staggered?60:340);
 }
+// enemies sidle toward the fan edge away from your aim (out of your guard window)
 function bestFlankSlot(e){
-  const f=S.player.facing, back=(f+4)%8;
+  const f=S.player.facing;
   const occ=new Set(S.enemies.filter(x=>x.alive&&x!==e).map(x=>x.slot));
-  const arc=new Set([(f+7)%8,f,(f+1)%8]);
-  const distTo=(s,t)=>{ let d=Math.abs(s-t); return Math.min(d,8-d); };
-  const cw=(e.slot+1)%8, ccw=(e.slot+7)%8;
-  const cand=[cw,ccw].filter(s=>!occ.has(s));
-  if(cand.length===0) return e.slot;
-  cand.sort((a,b)=>((arc.has(a)?10:0)+distTo(a,back))-((arc.has(b)?10:0)+distTo(b,back)));
-  const chosen=cand[0];
-  const cur=(arc.has(e.slot)?10:0)+distTo(e.slot,back);
-  const nw=(arc.has(chosen)?10:0)+distTo(chosen,back);
-  return nw<cur?chosen:e.slot;
+  const dir = e.slot<f ? -1 : e.slot>f ? 1 : (f>CENTER_LANE ? -1 : 1);
+  const cand=e.slot+dir;
+  if(cand>=0 && cand<SLOTS && !occ.has(cand) && Math.abs(cand-f)>Math.abs(e.slot-f)) return cand;
+  return e.slot;
 }
-function relation(slot){ const f=S.player.facing, back=(f+4)%8; if(slot===back) return 'back'; if(slot===f||slot===(f+1)%8||slot===(f+7)%8) return 'guarded'; return 'flank'; }
+// guard window = aimed lane ±1 (3 lanes). dist>=3 = exposed (backstab). dist===2 = flank.
+function relation(slot){ const d=Math.abs(slot-S.player.facing); if(d>=3) return 'back'; if(d===2) return 'flank'; return 'guarded'; }
+function guardLanes(){ const f=S.player.facing; return [f-1,f,f+1].filter(s=>s>=0&&s<SLOTS); }
 function applyDamageToPlayer(dmg, rel, e){
   let dealt=dmg;
   if(rel==='guarded' && S.player.block>0){ const a=Math.min(S.player.block,dealt); S.player.block-=a; dealt-=a; }
@@ -925,17 +927,17 @@ function playCard(idx){
   if(S.phase!=='player') return; const card=S.hand[idx]; const def=CARDS[card];
   if(!canPlay(card)){ toast('Not enough Aether',600); return; }
   if(def.target==='faced' && !enemyInSlot(S.player.facing)){ toast('Face a foe first',700); return; }
-  if(def.hook){ const t=enemyInSlot((S.player.facing+4)%8)||S.enemies.filter(e=>e.alive&&relation(e.slot)==='flank')[0]; if(!t){ toast('No foe to hook',700); return; } if(enemyInSlot(S.player.facing)){ toast('Faced slot is occupied',700); return; } }
+  if(def.hook){ const t=mostExposed(); if(!t){ toast('No foe to hook',700); return; } if(enemyInSlot(S.player.facing)){ toast('Your lane is occupied',700); return; } }
   S.player.energy-=cardCost(card); S.firstCardThisTurn=false; sfx('card');
   if(def.selfDmg){ S.player.hp-=def.selfDmg; vignette(); }
   if(def.block){ S.player.block+=def.block; }
   if(def.freeRotate){ S.freeRotateCard=true; toast('Rotate freely — A / D',900); }
   if(def.draw){ drawCards(def.draw); }
-  if(def.hook){ const src=enemyInSlot((S.player.facing+4)%8)||S.enemies.filter(e=>e.alive&&relation(e.slot)==='flank')[0]; if(src){ src.slot=S.player.facing; animateSlot(src); hitEnemy(src,3); } }
+  if(def.hook){ const src=mostExposed(); if(src){ src.slot=S.player.facing; animateSlot(src); hitEnemy(src,3); } }
   if(def.type==='attack'){ const t=enemyInSlot(S.player.facing)||S.enemies.filter(e=>e.alive)[0]; if(t){ const sp=enemyScreen(t); spawnSlash(sp.behind?innerWidth*0.5:sp.x, sp.behind?innerHeight*0.44:sp.y); } }
   if(def.dmg){
     if(def.target==='faced'){ const t=enemyInSlot(S.player.facing); if(t) hitEnemy(t,def.dmg+(hasRelic('bloodied_edge')?2:0)); }
-    else if(def.target==='arc'){ const f=S.player.facing; for(const s of [(f+7)%8,f,(f+1)%8]){ const t=enemyInSlot(s); if(t) hitEnemy(t,def.dmg); } }
+    else if(def.target==='arc'){ for(const s of guardLanes()){ const t=enemyInSlot(s); if(t) hitEnemy(t,def.dmg); } }
     else if(def.target==='any'){ const a=S.enemies.filter(e=>e.alive).sort((x,y)=>x.hp-y.hp); if(a[0]) hitEnemy(a[0],def.dmg); }
   }
   if(def.stagger){ const t=enemyInSlot(S.player.facing); if(t) t.staggered=true; }
@@ -957,11 +959,14 @@ function hitEnemy(e,dmg){
 function killEnemy(e){ if(e.labelEl) e.labelEl.style.opacity=0; const m=e.mesh; let t=0;
   const anim=()=>{ if(!m) return; t+=0.05; m.position.y-=0.06; m.rotation.z+=0.12; m.traverse(o=>{ if(o.material&&o.material.opacity!==undefined){o.material.transparent=true;o.material.opacity=Math.max(0,1-t);} }); if(t<1) requestAnimationFrame(anim); else ringGroup.remove(m); }; anim(); }
 function enemyInSlot(s){ return S.enemies.find(e=>e.alive&&e.slot===s); }
+function mostExposed(){ return S.enemies.filter(e=>e.alive&&e.slot!==S.player.facing).sort((a,b)=>Math.abs(b.slot-S.player.facing)-Math.abs(a.slot-S.player.facing))[0]; }
 function checkDefeat(){ if(S.enemies.filter(e=>e.alive).length===0 && S.screen==='combat'){ setTimeout(winCombat,500); return true; } return false; }
 function rotate(delta){
   if(S.phase!=='player') return;
-  if(!S.freeRotateCard){ if(S.freePivotLeft<=0){ toast('No free pivot — play Pivot/Slip',800); return; } S.freePivotLeft--; }
-  S.player.facing=(S.player.facing+delta+8)%8; camTarget.yaw=combatYaw(S.player.facing); camLerp=0;
+  const na=Math.max(0,Math.min(SLOTS-1,S.player.facing+delta));
+  if(na===S.player.facing) return; // at fan edge — nothing to shift to
+  if(!S.freeRotateCard){ if(S.freePivotLeft<=0){ toast('No free aim shift — play Pivot/Slip',800); return; } S.freePivotLeft--; }
+  S.player.facing=na;
   updateRotHint(); rollEnemyIntents(); updateHUD();
   if(S.tutorial) tutCheck();
 }
@@ -994,38 +999,26 @@ function updateHUD(){
 }
 // ---- tactical radar: top-down ring, YOUR FACING AT TOP, every foe shown even behind you ----
 const radarCv=document.getElementById('radar'), rx=radarCv.getContext('2d');
+// GUARD strip: the fan of lanes left→right; the 3 you guard glow blue, exposed lanes red.
 function drawRadar(){
-  const W=radarCv.width,H=radarCv.height,cx=W/2,cy=H/2,R=W*0.33;
-  rx.clearRect(0,0,W,H);
-  const up=-Math.PI/2, SL=Math.PI/4;
-  // guard arc wedge (front 3 slots span rel -1.5..+1.5)
-  rx.fillStyle='rgba(79,127,176,.22)'; rx.beginPath(); rx.moveTo(cx,cy);
-  rx.arc(cx,cy,R+9, up-1.5*SL, up+1.5*SL); rx.closePath(); rx.fill();
-  // back danger wedge (rel 4, one slot at bottom)
-  rx.fillStyle='rgba(200,60,45,.20)'; rx.beginPath(); rx.moveTo(cx,cy);
-  rx.arc(cx,cy,R+9, up+3.5*SL, up+4.5*SL); rx.closePath(); rx.fill();
-  // ring + slot ticks
-  rx.strokeStyle='rgba(217,178,90,.22)'; rx.lineWidth=1; rx.beginPath(); rx.arc(cx,cy,R,0,7); rx.stroke();
-  for(let s=0;s<8;s++){ const a=up+s*SL; rx.strokeStyle='rgba(217,178,90,.14)'; rx.beginPath(); rx.moveTo(cx+Math.cos(a)*(R-4),cy+Math.sin(a)*(R-4)); rx.lineTo(cx+Math.cos(a)*(R+4),cy+Math.sin(a)*(R+4)); rx.stroke(); }
-  // player wedge at center (points up = forward)
-  rx.fillStyle='#e9e2d0'; rx.beginPath(); rx.moveTo(cx,cy-9); rx.lineTo(cx-6,cy+6); rx.lineTo(cx+6,cy+6); rx.closePath(); rx.fill();
-  // enemies, placed by slot RELATIVE to facing
-  for(const e of S.enemies){ if(!e.alive) continue;
-    const rel=((e.slot-S.player.facing)+8)%8; const a=up+rel*SL;
-    const ex=cx+Math.cos(a)*R, ey=cy+Math.sin(a)*R;
-    const kind=relation(e.slot); const col=kind==='guarded'?'#7fa6c9':kind==='back'?'#f0654f':'#e0a24a';
-    const rad=e.boss?7:5;
-    rx.fillStyle=col; rx.beginPath(); rx.arc(ex,ey,rad,0,7); rx.fill();
-    rx.strokeStyle='rgba(0,0,0,.6)'; rx.lineWidth=1.5; rx.stroke();
-    // intent damage number, pushed outward
-    if(e.intent){ rx.fillStyle=kind==='back'?'#f0654f':'#f0e2bf'; rx.font='bold 10px Georgia'; rx.textAlign='center'; rx.textBaseline='middle';
-      const tx=cx+Math.cos(a)*(R+13), ty=cy+Math.sin(a)*(R+13); rx.fillText(String(e.intent.dmg),tx,ty); }
+  const W=radarCv.width,H=radarCv.height; rx.clearRect(0,0,W,H);
+  const n=SLOTS, pad=15, lw=(W-2*pad)/n, cy=H*0.52, r=Math.min(lw*0.42,17);
+  rx.font='bold 10px Georgia'; rx.textAlign='center'; rx.textBaseline='middle';
+  for(let i=0;i<n;i++){ const cx=pad+lw*(i+0.5); const d=Math.abs(i-S.player.facing);
+    rx.fillStyle = d<=1?'rgba(79,127,176,.32)': d>=3?'rgba(200,60,45,.22)':'rgba(217,178,90,.08)';
+    rx.strokeStyle='rgba(217,178,90,.28)'; rx.lineWidth=1;
+    rx.beginPath(); rx.arc(cx,cy,r,0,7); rx.fill(); rx.stroke();
+    if(i===S.player.facing){ rx.fillStyle='#e9e2d0'; rx.beginPath(); rx.moveTo(cx,cy+r+3); rx.lineTo(cx-5,cy+r+11); rx.lineTo(cx+5,cy+r+11); rx.closePath(); rx.fill(); }
+    const e=S.enemies.find(x=>x.alive&&x.slot===i);
+    if(e){ const rel=relation(i), col=rel==='guarded'?'#7fa6c9':rel==='back'?'#f0654f':'#e0a24a';
+      rx.fillStyle=col; rx.beginPath(); rx.arc(cx,cy,e.boss?7:5,0,7); rx.fill(); rx.strokeStyle='rgba(0,0,0,.6)'; rx.lineWidth=1.5; rx.stroke();
+      if(e.intent){ rx.fillStyle=rel==='back'?'#f0654f':'#f0e2bf'; rx.fillText(String(e.intent.dmg),cx,cy-r-8); } }
   }
 }
 function updateRotHint(){
   const el=document.getElementById('rotHint');
-  if(S.freeRotateCard){ el.innerHTML=`<b>Free rotation</b> — press <b>A</b> / <b>D</b> to aim`; return; }
-  el.innerHTML = S.freePivotLeft>0 ? `Free pivot ×<b>${S.freePivotLeft}</b>: <b>A</b>/<b>D</b> · guard faces where you look` : `<span class="used">Pivot spent — play Pivot/Slip to turn</span>`;
+  if(S.freeRotateCard){ el.innerHTML=`<b>Free aim</b> — press <b>A</b> / <b>D</b> to shift your guard`; return; }
+  el.innerHTML = S.freePivotLeft>0 ? `Free aim shift ×<b>${S.freePivotLeft}</b>: <b>A</b>/<b>D</b> · you guard the lane you aim at` : `<span class="used">Aim spent — play Pivot/Slip to shift further</span>`;
 }
 function renderHand(){
   handEl.innerHTML='';
@@ -1045,7 +1038,7 @@ function updateEnemyLabels(){
     d.style.opacity=1; d.querySelector('.ehpf').style.width=(100*Math.max(0,e.hp)/e.maxHp)+'%';
     const rel=relation(e.slot); const relEl=d.querySelector('.rel');
     relEl.className='rel '+(rel==='guarded'?'guarded':rel==='back'?'back':'flank');
-    relEl.textContent=rel==='guarded'?'guarded':rel==='back'?'at your back':'flanking';
+    relEl.textContent=rel==='guarded'?'guarded':rel==='back'?'exposed!':'flanking';
     const intEl=d.querySelector('.intent');
     if(e.intent){ const mv=e.intent.willMove?'↻ ':''; const ar=e.ai==='ranged'?'🏹':e.boss?'🔔':'⚔'; intEl.textContent=`${mv}${ar}${e.intent.dmg}`; d.classList.toggle('threat',e.intent.rel==='back'); } else intEl.textContent='';
     const st=d.querySelector('.status'); const tags=[]; if(e.staggered) tags.push('staggered'); if(e.weakened>0) tags.push('weakened'); st.textContent=tags.join(' · ');
@@ -1261,13 +1254,13 @@ renderer.setAnimationLoop((now)=>{
   for(const e of S.enemies){
     if(e._anim){ e.mesh.position.x+=(e._tx-e.mesh.position.x)*0.25; e.mesh.position.z+=(e._tz-e.mesh.position.z)*0.25; if(Math.abs(e._tx-e.mesh.position.x)<0.02) e._anim=0; }
     const pl=e.mesh.userData&&e.mesh.userData.plane;
-    if(pl){ pl.rotation.y=Math.atan2(-e.mesh.position.x,-e.mesh.position.z); if(e.alive) pl.position.y=Math.sin(now*0.0022+e.id)*0.06; }
+    if(pl){ pl.rotation.y=faceCamYaw(e.mesh.position.x,e.mesh.position.z); if(e.alive) pl.position.y=Math.sin(now*0.0022+e.id)*0.06; }
   }
   // held lantern follows the camera; dims during combat (the ring light takes over)
   lantern.position.set(camera.position.x, 1.7, camera.position.z);
   lantern.intensity = (S.screen==='combat'?0.5:1.1);
-  if(S.screen==='combat'){ const f=S.player.facing, back=(f+4)%8;
-    for(let i=0;i<SLOTS;i++){ const inArc=(i===f||i===(f+1)%8||i===(f+7)%8); guardMarkers[i].material.opacity+=((inArc?0.55:0)-guardMarkers[i].material.opacity)*0.2; slotMarkers[i].material.color.setHex(i===back?0x6a2a24:0x3a2f22); }
+  if(S.screen==='combat'){ const f=S.player.facing;
+    for(let i=0;i<SLOTS;i++){ const d=Math.abs(i-f); const inArc=d<=1; guardMarkers[i].material.opacity+=((inArc?0.55:0)-guardMarkers[i].material.opacity)*0.2; slotMarkers[i].material.color.setHex(d>=3?0x6a2a24:0x3a2f22); }
     drawRadar(); }
   updateEnemyLabels(); projectLabels(); updateHands(); updateFX(dt);
   renderer.render(scene,camera);
@@ -1307,15 +1300,15 @@ function buildTutorialArena(){
   S.gx=2; S.gz=2;
 }
 const TUT=[
-  { banner:`A <b>Ghoul</b> stands to your right, on the ring around you. You can only strike what you <b>face</b> — press <b>D</b> to rotate toward it.`,
+  { banner:`Enemies stand in a fan in front of you. You guard & strike the <b>lane you aim at</b> — press <b>D</b> to aim at the Ghoul on your right.`,
     check:()=> S.enemies[0] && S.player.facing===S.enemies[0].slot },
   { banner:`Now cut it down — play <b>Strike</b> (click the card, or press <b>1</b>).`,
     check:()=> S.enemies[0] && S.enemies[0].hp < S.enemies[0].maxHp },
-  { banner:`Raise your guard with <b>Bulwark</b>. Block only protects the <b>front arc</b> you face — never your sides or back.`,
+  { banner:`Raise your guard with <b>Bulwark</b>. Block only protects the <b>lanes you aim at</b> (that one ±1) — never the far edges.`,
     check:()=> S.player.block>0 },
   { banner:`End your turn and watch it move. Press <b>Space</b>.`,
     check:()=> S._tutEnemyActed },
-  { banner:`It slipped to your <b>back</b> — your Block is useless there! Turn to face it (<b>A</b>/<b>D</b>), or drag it into your guard with <b>Warden's Hook</b>.`,
+  { banner:`It slid to the <b>far edge</b>, out of your guard — your Block is useless there! Drag it back into your lane with <b>Warden's Hook</b> (or Pivot to swing your aim across).`,
     check:()=> (S.enemies[0] && relation(S.enemies[0].slot)==='guarded') || S._hookUsed },
   { banner:`Now finish it — <b>Strike</b> until it falls.`,
     check:()=> S.enemies[0] && !S.enemies[0].alive },
@@ -1332,7 +1325,7 @@ function startTutorial(){
   buildTutorialArena();
   const deck=['strike','bulwark','hook','strike','pivot','brace'];
   RUN_DECK=deck.slice();
-  startCombat({content:'tutorial'}, {foes:[{kind:'ghoul',slot:1,hp:18,dmg:4}], deck, silent:true});
+  startCombat({content:'tutorial'}, {foes:[{kind:'ghoul',slot:3,hp:18,dmg:4}], deck, silent:true});
   advanceTut();
 }
 function advanceTut(){
