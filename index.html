@@ -136,6 +136,7 @@
   @keyframes swayL{0%,100%{transform:translateY(0) rotate(0deg)}50%{transform:translateY(7px) rotate(-1.4deg)}}
   @keyframes swayR{0%,100%{transform:translateY(0) rotate(0deg)}50%{transform:translateY(9px) rotate(1.4deg)}}
   .hands-hidden{display:none !important}
+  #fx{position:absolute; inset:0; z-index:23; pointer-events:none}
 
   /* title nav */
   #titleBtns{display:flex; gap:14px; margin-top:34px; flex-wrap:wrap; justify-content:center}
@@ -187,6 +188,7 @@
   <div class="flashvig" id="vig"></div>
   <canvas id="handTorch" width="360" height="440" class="hands-hidden"></canvas>
   <canvas id="handShield" width="360" height="440" class="hands-hidden"></canvas>
+  <canvas id="fx"></canvas>
 
   <div id="mapWrap" class="hidden"><div class="mtitle" id="mapTitle">FLOOR 1</div><canvas id="minimap" width="150" height="150"></canvas></div>
   <div id="relicBar"></div>
@@ -431,6 +433,7 @@ function buildDungeon(depth){
     // content markers
     addMarker(r);
   }
+  dressDungeon(depth);
 }
 function addMarker(r){
   const p={x:r.cx*CELL, z:r.cz*CELL};
@@ -530,6 +533,65 @@ function paintBoss(x){
 }
 function paintEnemy(kind){ const c=creatureCv(), x=c.getContext('2d');
   ({ghoul:paintGhoul,archer:paintArcher,wight:paintWight,shade:paintShade,boss:paintBoss}[kind]||paintGhoul)(x); return c; }
+
+// ---- painted set-dressing props (wall torches / vines / cobwebs / banners / bones) ----
+function ctex(c){ const t=new THREE.CanvasTexture(c); t.colorSpace=THREE.SRGBColorSpace; t.magFilter=THREE.LinearFilter; return t; }
+function torchTex(){ const c=pcanvas(64,168), x=c.getContext('2d');
+  x.save(); x.globalCompositeOperation='lighter'; const gg=x.createRadialGradient(32,46,4,32,46,56); gg.addColorStop(0,'rgba(255,172,82,.55)'); gg.addColorStop(1,'rgba(255,110,40,0)'); x.fillStyle=gg; x.beginPath(); x.arc(32,46,56,0,7); x.fill(); x.restore();
+  x.strokeStyle='#241a12'; x.lineWidth=7; x.lineCap='round'; x.beginPath(); x.moveTo(32,162); x.lineTo(32,122); x.lineTo(46,110); x.stroke();
+  x.fillStyle='#3a2716'; rrect(x,27,62,10,64,4); x.fill(); ink(x,3);
+  x.fillStyle='#231607'; rrect(x,21,52,22,20,6); x.fill(); ink(x,3);
+  x.beginPath(); x.moveTo(32,60); x.bezierCurveTo(8,36,18,6,32,4); x.bezierCurveTo(46,6,56,36,32,60); x.closePath(); x.fillStyle=lgrad(x,32,4,32,60,'#ffcf47','#df5018'); x.fill();
+  x.beginPath(); x.moveTo(32,56); x.bezierCurveTo(18,38,22,18,32,14); x.bezierCurveTo(42,18,46,38,32,56); x.closePath(); x.fillStyle=lgrad(x,32,14,32,56,'#fff2b4','#ff9a2e'); x.fill();
+  return ctex(c); }
+function vineTex(){ const c=pcanvas(72,150), x=c.getContext('2d'), R=prng(31);
+  for(let k=0;k<4;k++){ const sx=12+k*16; x.strokeStyle=`rgba(${52+R()*28|0},${74+R()*28|0},${42+R()*18|0},.92)`; x.lineWidth=3+R()*2; x.lineCap='round'; x.beginPath(); x.moveTo(sx,0); let yy=0,xx=sx; while(yy<118+R()*22){ yy+=14; xx+=(R()-0.5)*16; x.lineTo(xx,yy); } x.stroke();
+    for(let l=0;l<4;l++){ const ly=22+l*26; x.fillStyle='#3e5a2e'; x.beginPath(); x.ellipse(sx+(R()-0.5)*14, ly, 5,9, R()*3,0,7); x.fill(); } }
+  return ctex(c); }
+function cobwebTex(){ const c=pcanvas(100), x=c.getContext('2d'); x.strokeStyle='rgba(222,222,232,.42)'; x.lineWidth=1; const ox=6,oy=6;
+  for(let a=0;a<=6;a++){ const ang=a/6*(Math.PI/2); x.beginPath(); x.moveTo(ox,oy); x.lineTo(ox+Math.cos(ang)*94, oy+Math.sin(ang)*94); x.stroke(); }
+  for(let r=15;r<94;r+=15){ x.beginPath(); for(let a=0;a<=6;a++){ const ang=a/6*(Math.PI/2), px=ox+Math.cos(ang)*r, py=oy+Math.sin(ang)*r; a?x.lineTo(px,py):x.moveTo(px,py); } x.stroke(); }
+  return ctex(c); }
+function boneTex(){ const c=pcanvas(120,80), x=c.getContext('2d');
+  x.lineCap='round'; x.strokeStyle='#0a0710'; x.lineWidth=11; x.beginPath(); x.moveTo(22,32); x.lineTo(84,56); x.stroke(); x.strokeStyle='#d8cdb4'; x.lineWidth=7; x.beginPath(); x.moveTo(22,32); x.lineTo(84,56); x.stroke();
+  x.fillStyle='#e2d8bf'; x.beginPath(); x.ellipse(48,46,20,18,0,0,7); x.fill(); ink(x,4);
+  x.fillStyle='#241c14'; x.beginPath(); x.arc(42,44,4.5,0,7); x.fill(); x.beginPath(); x.arc(55,44,4.5,0,7); x.fill();
+  x.beginPath(); x.moveTo(43,58); x.lineTo(53,58); x.lineTo(48,66); x.closePath(); x.fill();
+  return ctex(c); }
+function bannerTex(){ const c=pcanvas(80,152), x=c.getContext('2d');
+  x.beginPath(); x.moveTo(9,2); x.lineTo(71,2); x.lineTo(71,120); x.lineTo(55,140); x.lineTo(40,124); x.lineTo(25,140); x.lineTo(9,120); x.closePath(); x.fillStyle=lgrad(x,0,0,0,150,'#5a1e26','#2a0e12'); x.fill(); ink(x,4);
+  x.strokeStyle='#c9b071'; x.lineWidth=8; x.lineCap='round'; x.beginPath(); x.moveTo(40,44); x.lineTo(58,64); x.moveTo(40,44); x.lineTo(22,64); x.stroke();
+  return ctex(c); }
+const TORCHTEX=torchTex(), VINE=vineTex(), COBWEB=cobwebTex(), BANNER=bannerTex(), BONE=boneTex();
+const DRESS_ROT=[0,-Math.PI/2,Math.PI,Math.PI/2];
+function wallPlane(gx,gz,dir,tex,w,h,yc){
+  const geo=new THREE.PlaneGeometry(w,h);
+  const m=new THREE.Mesh(geo,new THREE.MeshBasicMaterial({map:tex,transparent:true,alphaTest:0.04,depthWrite:false,toneMapped:false}));
+  m.position.set(gx*CELL+DIRV[dir][0]*(CELL/2-0.06), yc, gz*CELL+DIRV[dir][1]*(CELL/2-0.06));
+  m.rotation.y=DRESS_ROT[dir]; m.renderOrder=3; dungeon.add(m); return m;
+}
+function placeTorch(gx,gz,dir){
+  const m=wallPlane(gx,gz,dir,TORCHTEX,0.85,2.05,1.85);
+  const light=new THREE.PointLight(0xff9440,1.9,9,2.0);
+  light.position.set(gx*CELL+DIRV[dir][0]*(CELL/2-0.5), 2.15, gz*CELL+DIRV[dir][1]*(CELL/2-0.5)); scene.add(light);
+  torches.push({light, flame:m, base:1.9, phase:Math.random()*7});
+}
+function placeBones(gx,gz){
+  const m=new THREE.Mesh(new THREE.PlaneGeometry(1.5,1.0), new THREE.MeshBasicMaterial({map:BONE,transparent:true,alphaTest:0.05,depthWrite:false,toneMapped:false}));
+  m.rotation.x=-Math.PI/2; m.rotation.z=Math.random()*Math.PI*2; m.position.set(gx*CELL,0.05,gz*CELL); m.renderOrder=2; dungeon.add(m);
+}
+function dressDungeon(depth){ const R=prng(depth*333+11);
+  for(let gz=0;gz<ROWS;gz++) for(let gx=0;gx<COLS;gx++){ if(GRID[gz][gx]!==1) continue;
+    const walls=[]; for(let d=0;d<4;d++){ const nx=gx+DIRV[d][0], nz=gz+DIRV[d][1]; if(!(nz>=0&&nz<ROWS&&nx>=0&&nx<COLS&&GRID[nz][nx]===1)) walls.push(d); }
+    if(!walls.length) continue;
+    const d=walls[(R()*walls.length)|0], roll=R();
+    if(roll<0.11 && torches.length<16) placeTorch(gx,gz,d);
+    else if(roll<0.20) wallPlane(gx,gz,d,VINE,1.3,1.6,2.05);
+    else if(roll<0.28) wallPlane(gx,gz,d,COBWEB,1.15,1.15,2.65);
+    else if(roll<0.34) wallPlane(gx,gz,d,BANNER,0.95,1.75,1.95);
+  }
+  for(const r of rooms){ if(R()<0.7){ placeBones(r.x+((R()*r.w)|0), r.z+((R()*r.h)|0)); } }
+}
 
 // ============================================================= DATA: ENEMIES
 const EN={
@@ -825,6 +887,7 @@ function playCard(idx){
   if(def.freeRotate){ S.freeRotateCard=true; toast('Rotate freely — A / D',900); }
   if(def.draw){ drawCards(def.draw); }
   if(def.hook){ const src=enemyInSlot((S.player.facing+4)%8)||S.enemies.filter(e=>e.alive&&relation(e.slot)==='flank')[0]; if(src){ src.slot=S.player.facing; animateSlot(src); hitEnemy(src,3); } }
+  if(def.type==='attack'){ const t=enemyInSlot(S.player.facing)||S.enemies.filter(e=>e.alive)[0]; if(t){ const sp=enemyScreen(t); spawnSlash(sp.behind?innerWidth*0.5:sp.x, sp.behind?innerHeight*0.44:sp.y); } }
   if(def.dmg){
     if(def.target==='faced'){ const t=enemyInSlot(S.player.facing); if(t) hitEnemy(t,def.dmg+(hasRelic('bloodied_edge')?2:0)); }
     else if(def.target==='arc'){ const f=S.player.facing; for(const s of [(f+7)%8,f,(f+1)%8]){ const t=enemyInSlot(s); if(t) hitEnemy(t,def.dmg); } }
@@ -843,7 +906,8 @@ function hitEnemy(e,dmg){
   e.hp-=d; floatEnemyDamage(e,d);
   e.mesh.scale.set(1.15,0.9,1.15); setTimeout(()=>e.mesh&&e.mesh.scale.set(1,1,1),120);
   const pl=e.mesh.userData&&e.mesh.userData.plane; if(pl){ pl.material.color.setHex(0xff9a9a); setTimeout(()=>pl.material&&pl.material.color.setHex(0xffffff),110); }
-  if(e.hp<=0){ e.alive=false; sfx('kill'); killEnemy(e); } else sfx('enemyhit');
+  const sp=enemyScreen(e); if(!sp.behind) spawnSpark(sp.x,sp.y,'#ffe0a0',10);
+  if(e.hp<=0){ e.alive=false; sfx('kill'); if(!sp.behind){ spawnMotes(sp.x,sp.y,'#c58fd0',18); spawnSpark(sp.x,sp.y,'#f0d0ff',10); } killEnemy(e); } else sfx('enemyhit');
 }
 function killEnemy(e){ if(e.labelEl) e.labelEl.style.opacity=0; const m=e.mesh; let t=0;
   const anim=()=>{ if(!m) return; t+=0.05; m.position.y-=0.06; m.rotation.z+=0.12; m.traverse(o=>{ if(o.material&&o.material.opacity!==undefined){o.material.transparent=true;o.material.opacity=Math.max(0,1-t);} }); if(t<1) requestAnimationFrame(anim); else ringGroup.remove(m); }; anim(); }
@@ -1123,6 +1187,22 @@ function updateHands(){
   elShield.classList.toggle('raised', S.screen==='combat' && S.player.block>0);
 }
 
+// ---- combat FX: particle overlay (sparks / slashes / soul-motes) ----
+const fxCv=document.getElementById('fx'), fxc=fxCv.getContext('2d');
+function fxResize(){ fxCv.width=innerWidth; fxCv.height=innerHeight; }
+fxResize(); addEventListener('resize',fxResize);
+const parts=[], slashes=[];
+function enemyScreen(e){ _v.set(e.mesh.position.x,1.1,e.mesh.position.z).add(ringGroup.position); _v.project(camera); return {x:(_v.x*0.5+0.5)*innerWidth, y:(-_v.y*0.5+0.5)*innerHeight, behind:_v.z>1}; }
+function spawnSpark(x,y,col,n){ for(let i=0;i<(n||10);i++){ const a=Math.random()*Math.PI*2,s=40+Math.random()*180; parts.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s-40,life:1,col,size:1.5+Math.random()*3,g:420}); } }
+function spawnMotes(x,y,col,n){ for(let i=0;i<(n||16);i++){ const a=Math.random()*Math.PI*2; parts.push({x:x+(Math.random()-0.5)*36,y:y+(Math.random()-0.5)*40,vx:(Math.random()-0.5)*40,vy:-40-Math.random()*70,life:1.5,col,size:2+Math.random()*4,g:-30}); } }
+function spawnSlash(x,y){ slashes.push({x,y,rot:(Math.random()-0.5)*1.0-0.35,life:1,len:110+Math.random()*50,dir:Math.random()<0.5?1:-1}); }
+function updateFX(dt){
+  fxc.clearRect(0,0,fxCv.width,fxCv.height);
+  for(let i=parts.length-1;i>=0;i--){ const p=parts[i]; p.life-=dt*1.7; if(p.life<=0){ parts.splice(i,1); continue; } p.x+=p.vx*dt; p.y+=p.vy*dt; p.vy+=p.g*dt; fxc.globalAlpha=Math.max(0,Math.min(1,p.life)); fxc.fillStyle=p.col; fxc.beginPath(); fxc.arc(p.x,p.y,Math.max(0.4,p.size*p.life),0,7); fxc.fill(); }
+  for(let i=slashes.length-1;i>=0;i--){ const s=slashes[i]; s.life-=dt*4; if(s.life<=0){ slashes.splice(i,1); continue; } fxc.save(); fxc.translate(s.x,s.y); fxc.rotate(s.rot); fxc.scale(s.dir,1); const a=Math.max(0,s.life); fxc.globalAlpha=a; fxc.strokeStyle='rgba(255,244,224,'+a+')'; fxc.lineWidth=8*s.life; fxc.beginPath(); fxc.arc(0,0,s.len,-0.55,0.55); fxc.stroke(); fxc.strokeStyle='rgba(255,180,120,'+a*0.8+')'; fxc.lineWidth=2.5; fxc.stroke(); fxc.restore(); }
+  fxc.globalAlpha=1;
+}
+
 // ---- loop ----
 let last=performance.now();
 renderer.setAnimationLoop((now)=>{
@@ -1143,7 +1223,7 @@ renderer.setAnimationLoop((now)=>{
   if(S.screen==='combat'){ const f=S.player.facing, back=(f+4)%8;
     for(let i=0;i<SLOTS;i++){ const inArc=(i===f||i===(f+1)%8||i===(f+7)%8); guardMarkers[i].material.opacity+=((inArc?0.55:0)-guardMarkers[i].material.opacity)*0.2; slotMarkers[i].material.color.setHex(i===back?0x6a2a24:0x3a2f22); }
     drawRadar(); }
-  updateEnemyLabels(); projectLabels(); updateHands();
+  updateEnemyLabels(); projectLabels(); updateHands(); updateFX(dt);
   renderer.render(scene,camera);
 });
 setInterval(()=>{ if(document.hidden) renderer.render(scene,camera); },250);
@@ -1233,7 +1313,8 @@ document.getElementById('skipTut').addEventListener('click',endTutorial);
 // debug
 window.__gyre={ S, EN, CARDS, RELICS, settings, META, startRun, onDescend, showIntro, openSettings, startTutorial, endTutorial, get TUTLEN(){return TUT.length;}, buildFloor, advanceFloor, startCombat, rotate, playCard, endPlayerTurn, hitEnemy, winCombat, afterReward, doTreasure, get rooms(){return rooms;}, get GRID(){return GRID;}, renderer, scene, camera, THREE,
   giveRelic:(id)=>{ if(!S.relics.includes(id)){S.relics.push(id); renderRelics();} }, __applyDmg:applyDamageToPlayer,
-  drawRadar, projectLabels, updateEnemyLabels, applyBrightness, lantern, combatLight };
+  drawRadar, projectLabels, updateEnemyLabels, applyBrightness, lantern, combatLight,
+  updateFX, spawnSpark, spawnSlash, get fxParts(){return parts;}, get fxSlashes(){return slashes;} };
 </script>
 </body>
 </html>
