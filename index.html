@@ -87,6 +87,8 @@
   .elabel .rel{font-size:9.5px; letter-spacing:.14em; text-transform:uppercase; margin-top:2px}
   .rel.guarded{color:var(--steel)} .rel.flank{color:#e0a24a} .rel.back{color:#f0654f}
   .elabel .status{font-size:9.5px; color:#c58fd0; letter-spacing:.1em; margin-top:1px}
+  .elabel.targeted{background:rgba(30,22,10,.55); border:1px solid var(--gold); box-shadow:0 0 16px rgba(217,178,90,.4)}
+  .elabel .rel.guarded{color:var(--gold)}
 
   #hand{position:absolute; left:0; right:0; bottom:16px; z-index:26; display:flex; justify-content:center; align-items:flex-end; gap:12px; height:236px; pointer-events:none}
   .card{width:146px; height:220px; pointer-events:auto; cursor:pointer; border-radius:11px;
@@ -105,8 +107,8 @@
   .card .ctype{position:absolute; bottom:0; left:0; right:0; font-size:9.5px; letter-spacing:.2em; text-transform:uppercase; text-align:center; padding:4px 0 5px; color:#fbe9cc; background:linear-gradient(180deg,#6a4a2a,#4a3018); border-top:1.5px solid rgba(233,201,141,.4)}
   .card.attack .ctype{background:linear-gradient(180deg,#8a2c25,#5e1712)}
   .card.guard .ctype{background:linear-gradient(180deg,#2f5a80,#1c3a54)}
-  .card.move .ctype,.card.utility .ctype{background:linear-gradient(180deg,#7a5a2a,#4e3714)}
-  .card.attack{border-color:#7a3128} .card.guard{border-color:#33597e} .card.move,.card.utility{border-color:#7a5a2a}
+  .card.move .ctype,.card.utility .ctype,.card.skill .ctype{background:linear-gradient(180deg,#7a5a2a,#4e3714)}
+  .card.attack{border-color:#7a3128} .card.guard{border-color:#33597e} .card.move,.card.utility,.card.skill{border-color:#7a5a2a}
 
   #endturn{position:absolute; right:26px; bottom:96px; z-index:27; pointer-events:auto; padding:13px 26px; border:2px solid #7a5a2a; border-radius:26px; cursor:pointer; background:var(--wood) center/cover, linear-gradient(180deg,#6a4a2a,#3a2716); color:#fbe9cc; letter-spacing:.18em; text-transform:uppercase; font-size:13px; transition:.16s; font-family:inherit; text-align:center; line-height:1.3; box-shadow:0 4px 14px rgba(0,0,0,.55), inset 0 1px 3px rgba(255,220,170,.25)}
   #endturn:hover{border-color:var(--gold); color:#fff; box-shadow:0 0 22px rgba(217,178,90,.4), inset 0 1px 3px rgba(255,220,170,.3); transform:translateY(-1px)}
@@ -727,33 +729,33 @@ const EN={
 };
 // ============================================================= DATA: CARDS
 const CARDS={
-  strike:{name:'Strike',cost:1,type:'attack',art:'⚔',text:'Deal 7 to the foe you face.',dmg:7,target:'faced'},
-  cleave:{name:'Cleave',cost:2,type:'attack',art:'🗡',text:'Deal 5 to all foes in your front arc.',dmg:5,target:'arc'},
+  strike:{name:'Strike',cost:1,type:'attack',art:'⚔',text:'Deal 7 to your target.',dmg:7,target:'one'},
+  cleave:{name:'Cleave',cost:2,type:'attack',art:'🗡',text:'Deal 5 to ALL enemies.',dmg:5,target:'all'},
   bulwark:{name:'Bulwark',cost:1,type:'guard',art:'🛡',text:'Gain 8 Block.',block:8},
-  shieldbash:{name:'Shield Bash',cost:1,type:'attack',art:'🔨',text:'Deal 5 to faced foe. It cannot move next turn.',dmg:5,target:'faced',stagger:true},
-  pivot:{name:'Pivot',cost:0,type:'move',art:'🌀',text:'Turn to face any slot. Draw 1.',freeRotate:true,draw:1},
+  shieldbash:{name:'Shield Bash',cost:1,type:'attack',art:'🔨',text:'Deal 5 and Stun your target (skips its next turn).',dmg:5,target:'one',stagger:true},
+  pivot:{name:'Focus',cost:0,type:'skill',art:'🌀',text:'Draw 2 cards.',draw:2},
   brace:{name:'Brace',cost:1,type:'guard',art:'⛨',text:'Gain 6 Block. Draw 1.',block:6,draw:1},
-  hook:{name:'Warden\'s Hook',cost:1,type:'utility',art:'🪝',text:'Drag the foe at your back into the slot you face. Deal 3.',hook:true},
-  sweep:{name:'Sweep',cost:1,type:'attack',art:'🌊',text:'Deal 4 to all foes in your front arc.',dmg:4,target:'arc'},
+  hook:{name:'Disarm',cost:1,type:'skill',art:'🪝',text:'Deal 4 to target; it deals -4 next turn.',dmg:4,target:'one',weaken:4},
+  sweep:{name:'Sweep',cost:1,type:'attack',art:'🌊',text:'Deal 4 to ALL enemies.',dmg:4,target:'all'},
   // enemy drops
-  rend:{name:'Rend',cost:1,type:'attack',art:'🩸',text:'Deal 9 to faced foe. Lose 2 HP.',dmg:9,target:'faced',selfDmg:2,from:'ghoul'},
-  lunge:{name:'Gore',cost:2,type:'attack',art:'💢',text:'Deal 6 to faced foe, then rotate one slot free.',dmg:6,target:'faced',rotateOne:true,from:'ghoul'},
-  pierce:{name:'Piercing Shot',cost:1,type:'attack',art:'🏹',text:'Deal 6 to ANY foe, ignoring Block & facing.',dmg:6,target:'any',from:'archer'},
-  hex:{name:'Wither Hex',cost:1,type:'guard',art:'☠',text:'Gain 5 Block. Faced foe deals -3 next turn.',block:5,weaken:true,from:'archer'},
-  graveslam:{name:'Grave Slam',cost:2,type:'attack',art:'⚒',text:'Deal 13 to the foe you face.',dmg:13,target:'faced',from:'wight'},
+  rend:{name:'Rend',cost:1,type:'attack',art:'🩸',text:'Deal 10 to target. Lose 2 HP.',dmg:10,target:'one',selfDmg:2,from:'ghoul'},
+  lunge:{name:'Gore',cost:2,type:'attack',art:'💢',text:'Deal 7 to target. Draw 1.',dmg:7,target:'one',draw:1,from:'ghoul'},
+  pierce:{name:'Piercing Shot',cost:1,type:'attack',art:'🏹',text:'Deal 8 to target.',dmg:8,target:'one',from:'archer'},
+  hex:{name:'Wither Hex',cost:1,type:'guard',art:'☠',text:'Gain 5 Block. Target deals -3 next turn.',block:5,weaken:3,target:'one',from:'archer'},
+  graveslam:{name:'Grave Slam',cost:2,type:'attack',art:'⚒',text:'Deal 14 to target.',dmg:14,target:'one',from:'wight'},
   ironhide:{name:'Ironhide',cost:1,type:'guard',art:'🪨',text:'Gain 11 Block.',block:11,from:'wight'},
-  slip:{name:'Slip',cost:0,type:'move',art:'💨',text:'Rotate to face any slot. Gain 3 Block. Draw 1.',freeRotate:true,block:3,draw:1,from:'shade'},
-  umbral:{name:'Umbral Step',cost:1,type:'attack',art:'🌑',text:'Deal 5 to faced foe, then rotate one slot free.',dmg:5,target:'faced',rotateOne:true,from:'shade'},
-  toll:{name:'The Toll',cost:2,type:'attack',art:'🔔',text:'Deal 8 to your whole front arc. Gain 6 Block.',dmg:8,target:'arc',block:6,from:'boss'},
+  slip:{name:'Slip',cost:0,type:'skill',art:'💨',text:'Gain 4 Block. Draw 1.',block:4,draw:1,from:'shade'},
+  umbral:{name:'Umbral Step',cost:1,type:'attack',art:'🌑',text:'Deal 5 to target. Gain 3 Block.',dmg:5,target:'one',block:3,from:'shade'},
+  toll:{name:'The Toll',cost:2,type:'attack',art:'🔔',text:'Deal 8 to ALL enemies. Gain 6 Block.',dmg:8,target:'all',block:6,from:'boss'},
 };
 // ============================================================= DATA: RELICS
 const RELICS={
-  gyroscope:{name:'Gyroscope',art:'🧭',desc:'+1 free pivot each turn.'},
+  gyroscope:{name:'Aether Gyre',art:'🧭',desc:'Gain +1 Aether every third turn.'},
   warders_sigil:{name:"Warder's Sigil",art:'🛡',desc:'Start each turn with 4 Block.'},
-  bloodied_edge:{name:'Bloodied Edge',art:'🗡',desc:'+2 damage to the foe you face.'},
+  bloodied_edge:{name:'Bloodied Edge',art:'🗡',desc:'+2 damage to your target.'},
   ossuary_key:{name:'Ossuary Key',art:'🔑',desc:'Heal 5 after each fight.'},
   twin_lantern:{name:'Twin Lantern',art:'🏮',desc:'Draw 1 extra card each turn.'},
-  backplate:{name:'Backplate',art:'⛊',desc:'Backstabs no longer deal bonus damage.'},
+  backplate:{name:'Backplate',art:'⛊',desc:'Enemies deal 2 less damage to you.'},
   executioner:{name:"Executioner's Mark",art:'☠',desc:'+4 damage to foes below 40% HP.'},
   reliquary_bell:{name:'Reliquary Bell',art:'🔔',desc:'Your first card each turn costs 0.'},
 };
@@ -927,12 +929,13 @@ function positionEnemies(){ for(const e of S.enemies){ if(!e.alive) continue; co
 
 function startPlayerTurn(){
   S.phase='player'; S.turnCount++;
-  S.player.energy=S.player.maxEnergy; S.player.block=0;
-  if(hasRelic('warders_sigil')) S.player.block+=4;
-  S.freePivotLeft=1+(hasRelic('gyroscope')?1:0); S.freeRotateCard=false; S.firstCardThisTurn=true;
+  S.player.energy=S.player.maxEnergy + (hasRelic('gyroscope') && S.turnCount%3===0 ? 1:0);
+  S.player.block=0; if(hasRelic('warders_sigil')) S.player.block+=4;
+  S.firstCardThisTurn=true;
   for(const e of S.enemies) if(e.weakened>0){ e.weakened--; if(e.weakened===0) e.dmg=e.baseDmg; }
   drawCards(5+(hasRelic('twin_lantern')?1:0));
-  if(S.tutorial){ S.hand=['strike','bulwark','hook','strike','pivot']; }
+  if(S.tutorial){ S.hand=['strike','bulwark','strike','strike','brace']; }
+  ensureTarget();
   S._dealAnim=true;
   rollEnemyIntents(); updateHUD(); renderHand(); updateRotHint();
   document.getElementById('endturn').classList.remove('wait');
@@ -953,49 +956,23 @@ function runEnemyTurn(){
   step();
 }
 function enemyAct(e, done){
-  if(S.tutorial && !e._tutFlanked){ // scripted slide to the exposed far edge to teach the lesson
-    e._tutFlanked=true; e.tc=(e.tc||0)+1; e.slot = S.player.facing<=CENTER_LANE ? SLOTS-1 : 0; animateSlot(e);
-    setTimeout(()=>{ if(e.fx)e.fx.lunge=1; applyDamageToPlayer(e.dmg, relation(e.slot), e); updateHUD(); toast('It slips out of your guard!',900); done(); },360);
-    return;
-  }
   e.tc=(e.tc||0)+1;
-  const doMove = !e.staggered && (
-    e.ai==='slow' ? (e.tc%2===0) :
-    e.ai==='ranged' ? (Math.random()<0.6) : true );
-  if(doMove){
-    let steps = e.ai==='rush'?2:1;
-    for(let k=0;k<steps;k++){ const t=bestFlankSlot(e); if(t!==e.slot){ e.slot=t; } }
-    animateSlot(e);
-  }
-  if(e.staggered) e.staggered=false;
+  if(e.staggered){ e.staggered=false; toast(e.name+' is stunned',700); done(); return; }
   setTimeout(()=>{
     // boss: summon on every 3rd turn if room
     if(e.boss && e.tc%3===0){ const occ=new Set(S.enemies.filter(x=>x.alive).map(x=>x.slot)); const free=[...Array(SLOTS).keys()].filter(s=>!occ.has(s)); if(free.length && S.enemies.filter(x=>x.alive).length<SLOTS){ const ns=free[(Math.random()*free.length)|0]; addEnemy('ghoul',ns); const ne=S.enemies[S.enemies.length-1]; const p=slotPos(ns); ne.mesh.position.set(p.x,0,p.z); if(ne.mesh.userData.plane) ne.mesh.userData.plane.rotation.y=faceCamYaw(p.x,p.z); toast('The Bellringer calls the dead',800); rollEnemyIntents(); } }
-    const rel=relation(e.slot);
-    let dmg=e.dmg; let crit=false;
-    if(rel==='back' && !hasRelic('backplate')){ dmg=Math.round(dmg*1.75); crit=true; }
     if(e.fx) e.fx.lunge=1; // lunge forward as it strikes
-    applyDamageToPlayer(dmg, rel, e);
-    updateHUD(); if(crit) toast('BACKSTAB',650);
+    applyDamageToPlayer(e.dmg);
+    updateHUD();
     done();
-  }, e.staggered?60:340);
+  }, 300);
 }
-// enemies sidle toward the fan edge away from your aim (out of your guard window)
-function bestFlankSlot(e){
-  const f=S.player.facing;
-  const occ=new Set(S.enemies.filter(x=>x.alive&&x!==e).map(x=>x.slot));
-  const dir = e.slot<f ? -1 : e.slot>f ? 1 : (f>CENTER_LANE ? -1 : 1);
-  const cand=e.slot+dir;
-  if(cand>=0 && cand<SLOTS && !occ.has(cand) && Math.abs(cand-f)>Math.abs(e.slot-f)) return cand;
-  return e.slot;
-}
-// guard window = aimed lane ±1 (3 lanes). dist>=3 = exposed (backstab). dist===2 = flank.
-function relation(slot){ const d=Math.abs(slot-S.player.facing); if(d>=3) return 'back'; if(d===2) return 'flank'; return 'guarded'; }
-function guardLanes(){ const f=S.player.facing; return [f-1,f,f+1].filter(s=>s>=0&&s<SLOTS); }
-function applyDamageToPlayer(dmg, rel, e){
-  let dealt=dmg;
-  if(rel==='guarded' && S.player.block>0){ const a=Math.min(S.player.block,dealt); S.player.block-=a; dealt-=a; }
-  if(dealt>0){ S.player.hp-=dealt; vignette(); sfx(rel==='back'?'backstab':'hit'); } else { sfx('block'); }
+// which alive enemy is the current target (the selected lane)
+function ensureTarget(){ const alive=S.enemies.filter(e=>e.alive); if(!alive.length) return; if(!alive.some(e=>e.slot===S.player.facing)){ S.player.facing = alive.sort((a,b)=>a.slot-b.slot)[0].slot; } }
+function applyDamageToPlayer(dmg){
+  let dealt=Math.max(0, dmg - (hasRelic('backplate')?2:0));   // Backplate: flat armor
+  if(S.player.block>0){ const a=Math.min(S.player.block,dealt); S.player.block-=a; dealt-=a; } // block soaks all incoming
+  if(dealt>0){ S.player.hp-=dealt; vignette(); sfx('hit'); } else { sfx('block'); }
   floatDamage(dealt>0?-dealt:0);
   if(S.player.hp<=0){ S.player.hp=0; updateHUD(); setTimeout(gameOver,500); }
 }
@@ -1006,25 +983,24 @@ function canPlay(card){ return cardCost(card)<=S.player.energy; }
 function playCard(idx){
   if(S.phase!=='player') return; const card=S.hand[idx]; const def=CARDS[card];
   if(!canPlay(card)){ toast('Not enough Aether',600); return; }
-  if(def.target==='faced' && !enemyInSlot(S.player.facing)){ toast('Face a foe first',700); return; }
-  if(def.hook){ const t=mostExposed(); if(!t){ toast('No foe to hook',700); return; } if(enemyInSlot(S.player.facing)){ toast('Your lane is occupied',700); return; } }
+  ensureTarget();
+  const single = def.target==='one';
+  let tgt = single ? (enemyInSlot(S.player.facing) || S.enemies.filter(e=>e.alive).sort((a,b)=>a.slot-b.slot)[0]) : null;
+  if(single && !tgt){ toast('No enemies to target',700); return; }
+  if(tgt) S.player.facing = tgt.slot;
   S.player.energy-=cardCost(card); S.firstCardThisTurn=false; sfx('card');
   if(def.selfDmg){ S.player.hp-=def.selfDmg; vignette(); }
   if(def.block){ S.player.block+=def.block; }
-  if(def.freeRotate){ S.freeRotateCard=true; toast('Rotate freely — A / D',900); }
   if(def.draw){ drawCards(def.draw); }
-  if(def.hook){ const src=mostExposed(); if(src){ src.slot=S.player.facing; animateSlot(src); hitEnemy(src,3); } }
-  if(def.type==='attack'){ const t=enemyInSlot(S.player.facing)||S.enemies.filter(e=>e.alive)[0]; if(t){ const sp=enemyScreen(t); spawnSlash(sp.behind?innerWidth*0.5:sp.x, sp.behind?innerHeight*0.44:sp.y); } }
+  if(def.type==='attack'){ const t=tgt||S.enemies.filter(e=>e.alive)[0]; if(t){ const sp=enemyScreen(t); spawnSlash(sp.behind?innerWidth*0.5:sp.x, sp.behind?innerHeight*0.44:sp.y); } }
   if(def.dmg){
-    if(def.target==='faced'){ const t=enemyInSlot(S.player.facing); if(t) hitEnemy(t,def.dmg+(hasRelic('bloodied_edge')?2:0)); }
-    else if(def.target==='arc'){ for(const s of guardLanes()){ const t=enemyInSlot(s); if(t) hitEnemy(t,def.dmg); } }
-    else if(def.target==='any'){ const a=S.enemies.filter(e=>e.alive).sort((x,y)=>x.hp-y.hp); if(a[0]) hitEnemy(a[0],def.dmg); }
+    if(def.target==='all'){ for(const e of S.enemies.filter(e=>e.alive)) hitEnemy(e,def.dmg); }
+    else if(tgt){ hitEnemy(tgt, def.dmg + (hasRelic('bloodied_edge')?2:0)); }
   }
-  if(def.stagger){ const t=enemyInSlot(S.player.facing); if(t) t.staggered=true; }
-  if(def.weaken){ const t=enemyInSlot(S.player.facing); if(t){ t.weakened=2; t.dmg=Math.max(0,t.baseDmg-3); } }
+  if(def.stagger && tgt) tgt.staggered=true;
+  if(def.weaken && tgt){ tgt.weakened=2; tgt.dmg=Math.max(0, tgt.baseDmg-def.weaken); }
   S.hand.splice(idx,1); S.discard.push(card);
-  if(def.rotateOne) S.freePivotLeft++;
-  if(def.hook) S._hookUsed=true;
+  ensureTarget();
   checkDefeat(); updateHUD(); renderHand(); rollEnemyIntents(); updateRotHint();
   if(S.tutorial) tutCheck();
 }
@@ -1041,27 +1017,19 @@ function killEnemy(e){ if(e.labelEl) e.labelEl.style.opacity=0; const m=e.mesh; 
 function enemyInSlot(s){ return S.enemies.find(e=>e.alive&&e.slot===s); }
 function mostExposed(){ return S.enemies.filter(e=>e.alive&&e.slot!==S.player.facing).sort((a,b)=>Math.abs(b.slot-S.player.facing)-Math.abs(a.slot-S.player.facing))[0]; }
 function checkDefeat(){ if(S.enemies.filter(e=>e.alive).length===0 && S.screen==='combat'){ setTimeout(winCombat,500); return true; } return false; }
+// A/D cycles the selected target through living enemies (free)
 function rotate(delta){
   if(S.phase!=='player') return;
-  const na=Math.max(0,Math.min(SLOTS-1,S.player.facing+delta));
-  if(na===S.player.facing) return; // at fan edge — nothing to shift to
-  if(!S.freeRotateCard){ if(S.freePivotLeft<=0){ toast('No free aim shift — play Pivot/Slip',800); return; } S.freePivotLeft--; }
-  S.player.facing=na;
-  updateRotHint(); rollEnemyIntents(); updateHUD();
+  const alive=S.enemies.filter(e=>e.alive).sort((a,b)=>a.slot-b.slot);
+  if(!alive.length) return;
+  let i=alive.findIndex(e=>e.slot===S.player.facing); if(i<0) i=0;
+  i=(i+delta+alive.length)%alive.length; S.player.facing=alive[i].slot;
+  sfx('select'); updateRotHint(); updateHUD();
   if(S.tutorial) tutCheck();
 }
+function setTargetTo(e){ if(!e||!e.alive||S.phase!=='player') return; S.player.facing=e.slot; sfx('select'); updateRotHint(); updateHUD(); if(S.tutorial) tutCheck(); }
 function rollEnemyIntents(){
-  for(const e of S.enemies){ if(!e.alive){ e.intent=null; continue; }
-    // predict the NEXT action, matching enemyAct (which increments tc first)
-    const nextTc=(e.tc||0)+1;
-    let willMove;
-    if(e.staggered) willMove=false;
-    else if(e.ai==='slow') willMove = (nextTc%2===0);   // wights heave every other turn
-    else if(e.ai==='ranged') willMove=false;            // archers reposition unpredictably — no false arrow
-    else willMove=true;
-    const target= willMove? bestFlankSlot(e): e.slot; const rel=relation(target);
-    let dmg=e.dmg; if(rel==='back'&&!hasRelic('backplate')) dmg=Math.round(dmg*1.75);
-    e.intent={willMove: target!==e.slot, dmg, rel}; }
+  for(const e of S.enemies){ e.intent = e.alive ? { dmg:e.dmg, stunned:e.staggered } : null; }
   updateEnemyLabels();
 }
 
@@ -1079,26 +1047,24 @@ function updateHUD(){
 }
 // ---- tactical radar: top-down ring, YOUR FACING AT TOP, every foe shown even behind you ----
 const radarCv=document.getElementById('radar'), rx=radarCv.getContext('2d');
-// GUARD strip: the fan of lanes left→right; the 3 you guard glow blue, exposed lanes red.
+// ENEMY strip: lanes left→right; your TARGET glows gold, each enemy shows incoming damage.
 function drawRadar(){
   const W=radarCv.width,H=radarCv.height; rx.clearRect(0,0,W,H);
   const n=SLOTS, pad=15, lw=(W-2*pad)/n, cy=H*0.52, r=Math.min(lw*0.42,17);
   rx.font='bold 10px Georgia'; rx.textAlign='center'; rx.textBaseline='middle';
-  for(let i=0;i<n;i++){ const cx=pad+lw*(i+0.5); const d=Math.abs(i-S.player.facing);
-    rx.fillStyle = d<=1?'rgba(79,127,176,.32)': d>=3?'rgba(200,60,45,.22)':'rgba(217,178,90,.08)';
-    rx.strokeStyle='rgba(217,178,90,.28)'; rx.lineWidth=1;
+  for(let i=0;i<n;i++){ const cx=pad+lw*(i+0.5); const e=S.enemies.find(x=>x.alive&&x.slot===i);
+    const targeted = e && i===S.player.facing;
+    rx.fillStyle = targeted?'rgba(217,178,90,.34)': e?'rgba(140,90,90,.14)':'rgba(120,110,130,.05)';
+    rx.strokeStyle= targeted?'#d9b25a':'rgba(217,178,90,.22)'; rx.lineWidth= targeted?2:1;
     rx.beginPath(); rx.arc(cx,cy,r,0,7); rx.fill(); rx.stroke();
-    if(i===S.player.facing){ rx.fillStyle='#e9e2d0'; rx.beginPath(); rx.moveTo(cx,cy+r+3); rx.lineTo(cx-5,cy+r+11); rx.lineTo(cx+5,cy+r+11); rx.closePath(); rx.fill(); }
-    const e=S.enemies.find(x=>x.alive&&x.slot===i);
-    if(e){ const rel=relation(i), col=rel==='guarded'?'#7fa6c9':rel==='back'?'#f0654f':'#e0a24a';
+    if(e){ const col=e.intent&&e.intent.dmg>=10?'#f0654f':'#c9a24a';
       rx.fillStyle=col; rx.beginPath(); rx.arc(cx,cy,e.boss?7:5,0,7); rx.fill(); rx.strokeStyle='rgba(0,0,0,.6)'; rx.lineWidth=1.5; rx.stroke();
-      if(e.intent){ rx.fillStyle=rel==='back'?'#f0654f':'#f0e2bf'; rx.fillText(String(e.intent.dmg),cx,cy-r-8); } }
+      if(e.intent){ rx.fillStyle= e.intent.stunned?'#8ab4ff':(e.intent.dmg>=10?'#f0654f':'#f0e2bf'); rx.fillText(e.intent.stunned?'zzz':String(e.intent.dmg),cx,cy-r-8); } }
   }
 }
 function updateRotHint(){
-  const el=document.getElementById('rotHint');
-  if(S.freeRotateCard){ el.innerHTML=`<b>Free aim</b> — press <b>A</b> / <b>D</b> to shift your guard`; return; }
-  el.innerHTML = S.freePivotLeft>0 ? `Free aim shift ×<b>${S.freePivotLeft}</b>: <b>A</b>/<b>D</b> · you guard the lane you aim at` : `<span class="used">Aim spent — play Pivot/Slip to shift further</span>`;
+  const el=document.getElementById('rotHint'); const t=enemyInSlot(S.player.facing);
+  el.innerHTML = t ? `Target: <b>${t.name}</b> &nbsp;·&nbsp; click a foe or <b>A</b>/<b>D</b> to switch` : `<span class="used">Pick a target — click a foe or A / D</span>`;
 }
 // ---- painted card icons (replace emoji) ----
 function paintIcon(type){ const c=pcanvas(100), x=c.getContext('2d'); x.lineJoin='round'; x.lineCap='round'; x.translate(50,50);
@@ -1135,27 +1101,21 @@ const _v=new THREE.Vector3();
 function updateEnemyLabels(){
   for(const e of S.enemies){ const d=e.labelEl; if(!d) continue; if(!e.alive){ d.style.opacity=0; continue; }
     d.style.opacity=1; d.querySelector('.ehpf').style.width=(100*Math.max(0,e.hp)/e.maxHp)+'%';
-    const rel=relation(e.slot); const relEl=d.querySelector('.rel');
-    relEl.className='rel '+(rel==='guarded'?'guarded':rel==='back'?'back':'flank');
-    relEl.textContent=rel==='guarded'?'guarded':rel==='back'?'exposed!':'flanking';
+    const targeted=(e.slot===S.player.facing); const relEl=d.querySelector('.rel');
+    relEl.className='rel'+(targeted?' guarded':''); relEl.textContent=targeted?'◎ target':'';
     const intEl=d.querySelector('.intent');
-    if(e.intent){ const mv=e.intent.willMove?'↻ ':''; const ar=e.ai==='ranged'?'🏹':e.boss?'🔔':'⚔'; intEl.textContent=`${mv}${ar}${e.intent.dmg}`; d.classList.toggle('threat',e.intent.rel==='back'); } else intEl.textContent='';
-    const st=d.querySelector('.status'); const tags=[]; if(e.staggered) tags.push('staggered'); if(e.weakened>0) tags.push('weakened'); st.textContent=tags.join(' · ');
+    if(e.intent){ if(e.intent.stunned){ intEl.textContent='💫 stunned'; d.classList.remove('threat'); } else { const ar=e.ai==='ranged'?'🏹':e.boss?'🔔':'⚔'; intEl.textContent=`${ar}${e.intent.dmg}`; d.classList.toggle('threat',e.intent.dmg>=10); } } else intEl.textContent='';
+    d.classList.toggle('targeted', targeted);
+    const st=d.querySelector('.status'); const tags=[]; if(e.staggered) tags.push('stunned'); if(e.weakened>0) tags.push('weakened'); st.textContent=tags.join(' · ');
   }
 }
 function projectLabels(){ if(S.screen!=='combat') return;
-  const mL=60, mT=150, mB=210; // keep clear of topbar/radar and the hand
+  const mL=60, mT=140, mB=210;
   for(const e of S.enemies){ if(!e.labelEl||!e.alive) continue;
     _v.set(e.mesh.position.x, e.boss?2.9:2.15, e.mesh.position.z).add(ringGroup.position); _v.project(camera);
-    const behind=_v.z>1;
-    let x = (behind? (-_v.x):_v.x)*0.5*innerWidth + innerWidth/2;
-    let y = behind? innerHeight-mB : (-_v.y*0.5+0.5)*innerHeight;
-    const cxp=Math.max(mL,Math.min(innerWidth-mL,x));
-    const cyp=Math.max(mT,Math.min(innerHeight-mB,y));
-    const offscreen = behind || cxp!==x || cyp!==y;
-    e.labelEl.style.left=cxp+'px'; e.labelEl.style.top=cyp+'px'; e.labelEl.style.opacity=1;
-    e.labelEl.classList.toggle('offscreen', offscreen);
-    e.labelEl.classList.toggle('atback', relation(e.slot)==='back');
+    let x=Math.max(mL,Math.min(innerWidth-mL,(_v.x*0.5+0.5)*innerWidth));
+    let y=Math.max(mT,Math.min(innerHeight-mB,(-_v.y*0.5+0.5)*innerHeight));
+    e.labelEl.style.left=x+'px'; e.labelEl.style.top=y+'px'; e.labelEl.style.opacity=(_v.z>1?0:1);
   }
 }
 
@@ -1263,6 +1223,17 @@ addEventListener('keydown',(ev)=>{ const k=ev.key.toLowerCase();
   else if(S.screen==='combat' && S.phase==='player'){ if(k==='a'||k==='arrowleft') rotate(-1); else if(k==='d'||k==='arrowright') rotate(1); else if(k===' '){ ev.preventDefault(); endPlayerTurn(); } else if(k>='1'&&k<='9'){ const i=+k-1; if(i<S.hand.length) playCard(i); } }
 });
 document.getElementById('endturn').addEventListener('click',endPlayerTurn);
+// click an enemy to target it
+const _ray=new THREE.Raycaster(), _m=new THREE.Vector2();
+renderer.domElement.addEventListener('pointerdown',(ev)=>{
+  if(S.screen!=='combat'||S.phase!=='player') return;
+  const r=renderer.domElement.getBoundingClientRect();
+  _m.x=((ev.clientX-r.left)/r.width)*2-1; _m.y=-((ev.clientY-r.top)/r.height)*2+1;
+  _ray.setFromCamera(_m,camera);
+  const planes=S.enemies.filter(e=>e.alive&&e.mesh.userData.plane).map(e=>e.mesh.userData.plane);
+  const hit=_ray.intersectObjects(planes,false)[0];
+  if(hit){ const e=S.enemies.find(x=>x.alive&&x.mesh.userData.plane===hit.object); setTargetTo(e); }
+});
 
 // ---- first-person hands (painted, drawn once) ----
 function drawTorchHand(){
@@ -1325,9 +1296,9 @@ function updateHands(){
   const t=performance.now(), block=(S.screen==='combat'&&S.player.block>0);
   elShield.classList.toggle('raised', block);
   const swayY=Math.sin(t*0.0013)*8, swayR=Math.sin(t*0.0013)*1.3;
-  let aimShift=0, aimRot=0, rise=0, sc=1;
-  if(S.screen==='combat'){ aimShift=(S.player.facing-CENTER_LANE)*14; aimRot=(S.player.facing-CENTER_LANE)*1.6; if(block){ rise=-24; sc=1.05; } }
-  elShield.style.transform=`translateY(${swayY+rise}px) translateX(${aimShift}px) rotate(${swayR+aimRot}deg) scale(${sc})`;
+  let rise=0, sc=1;
+  if(block){ rise=-24; sc=1.05; }
+  elShield.style.transform=`translateY(${swayY+rise}px) rotate(${swayR}deg) scale(${sc})`;
 }
 
 // ---- combat FX: particle overlay (sparks / slashes / soul-motes) ----
@@ -1376,7 +1347,7 @@ renderer.setAnimationLoop((now)=>{
   lantern.position.set(camera.position.x, 1.7, camera.position.z);
   lantern.intensity = (S.screen==='combat'?0.5:1.1);
   if(S.screen==='combat'){ const f=S.player.facing;
-    for(let i=0;i<SLOTS;i++){ const d=Math.abs(i-f); const inArc=d<=1; guardMarkers[i].material.opacity+=((inArc?0.55:0)-guardMarkers[i].material.opacity)*0.2; slotMarkers[i].material.color.setHex(d>=3?0x6a2a24:0x3a2f22); }
+    for(let i=0;i<SLOTS;i++){ const isT=(i===f)&&S.enemies.some(e=>e.alive&&e.slot===i); guardMarkers[i].material.color.setHex(0xd9b25a); guardMarkers[i].material.opacity+=((isT?0.8:0)-guardMarkers[i].material.opacity)*0.2; slotMarkers[i].material.color.setHex(0x3a2f22); }
     drawRadar(); }
   if(S.screen==='crawl'){ camera.position.y = 1.5 + Math.sin(now*0.0075)*(camLerp<1?0.045:0.014); }
   updateAmbient(dt);
@@ -1419,21 +1390,17 @@ function buildTutorialArena(){
   S.gx=2; S.gz=2;
 }
 const TUT=[
-  { banner:`Enemies stand in a fan in front of you. You guard & strike the <b>lane you aim at</b> — press <b>D</b> to aim at the Ghoul on your right.`,
-    check:()=> S.enemies[0] && S.player.facing===S.enemies[0].slot },
-  { banner:`Now cut it down — play <b>Strike</b> (click the card, or press <b>1</b>).`,
+  { banner:`A <b>Ghoul</b> stands before you. <b>Click it</b> (or press <b>A</b>/<b>D</b>) to target it, then play <b>Strike</b>.`,
     check:()=> S.enemies[0] && S.enemies[0].hp < S.enemies[0].maxHp },
-  { banner:`Raise your guard with <b>Bulwark</b>. Block only protects the <b>lanes you aim at</b> (that one ±1) — never the far edges.`,
+  { banner:`Raise your guard — play <b>Bulwark</b>. Block soaks damage from <b>every</b> enemy this turn, then resets.`,
     check:()=> S.player.block>0 },
-  { banner:`End your turn and watch it move. Press <b>Space</b>.`,
+  { banner:`End your turn — the dead strike back (your Block absorbs it). Press <b>Space</b>.`,
     check:()=> S._tutEnemyActed },
-  { banner:`It slid to the <b>far edge</b>, out of your guard — your Block is useless there! Drag it back into your lane with <b>Warden's Hook</b> (or Pivot to swing your aim across).`,
-    check:()=> (S.enemies[0] && relation(S.enemies[0].slot)==='guarded') || S._hookUsed },
   { banner:`Now finish it — <b>Strike</b> until it falls.`,
     check:()=> S.enemies[0] && !S.enemies[0].alive },
   { banner:`Every kill is a card. <b>Take its move</b> into your deck — choose one.`,
     check:()=> S._tutRewardTaken },
-  { banner:`That is the gyre: <b>guard the way you face, and take what you kill</b>. The Undercroft awaits.`, terminal:true },
+  { banner:`That's the loop: <b>target, strike, guard, and take what you kill</b>. The Undercroft awaits.`, terminal:true },
 ];
 function startTutorial(){
   initAudio(); startAmbient();
@@ -1444,7 +1411,7 @@ function startTutorial(){
   buildTutorialArena();
   const deck=['strike','bulwark','hook','strike','pivot','brace'];
   RUN_DECK=deck.slice();
-  startCombat({content:'tutorial'}, {foes:[{kind:'ghoul',slot:3,hp:18,dmg:4}], deck, silent:true});
+  startCombat({content:'tutorial'}, {foes:[{kind:'ghoul',slot:2,hp:18,dmg:5}], deck, silent:true});
   advanceTut();
 }
 function advanceTut(){
